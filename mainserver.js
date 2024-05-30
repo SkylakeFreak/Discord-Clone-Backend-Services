@@ -144,12 +144,13 @@ service1.on('connection',(socket)=>{
     
             if (user){
                 console.log("user existsa")
-                console.log(currentuser,user.toname)
-                if (user.toname.includes(currentuser) || friendtoadd===currentuser){
+                if (user.toname.includes(currentuser)===true || friendtoadd===currentuser){
                     console.log("cant override")
                 }
                 else{
                     console.log("updating")
+
+
                       await RequestUser.updateOne({
                     ofname:friendtoadd},
                     {$push:{toname:currentuser}},
@@ -164,6 +165,14 @@ service1.on('connection',(socket)=>{
                 console.log(currentuser,friendtoadd)
                 
                 const newuser=new RequestUser({ofname:friendtoadd,toname:currentuser})
+                const check=await RequestUser.findOne({ofname:currentuser})
+                if (check){
+                    console.log("good to go")
+                }
+                else{
+                    const newuser1=new RequestUser({ofname:currentuser})
+                    await newuser1.save()
+                }
                 await newuser.save();
 
             }
@@ -208,19 +217,34 @@ service3.on('connection',(socket)=>{
                     
                 }
                 else{
-                    
-                    await RequestUser.updateOne(
-                        { ofname: currentuser },
-                        { $push: { addedfriends: permavalue } }
-                    );
-                    
-                    await RequestUser.updateOne(
-                        { ofname: currentuser },
-                        { $pull: { toname: permavalue } }
-                    );
-                    
-                        console.log("addedfriends")
+
+                    const check11=await RequestUser.findOne({ofname:currentuser})
+                    console.log(permavalue,check11.addedfriends,"lastcheckpoint")
+
+                    if (permavalue in check11.addedfriends){
+                        console.log("Multiple hits")
+                    }
+                    else{
+                        await RequestUser.updateOne(
+                            { ofname: currentuser },
+                            { $push: { addedfriends: permavalue } }
+                        );
+                        await RequestUser.updateOne(
+                            { ofname: permavalue },
+                            { $push: { addedfriends: currentuser } }
+                        );
                         
+                        await RequestUser.updateOne(
+                            { ofname: currentuser },
+                            { $pull: { toname: permavalue } }
+                        );
+                        
+                            console.log("addedfriends")
+                            
+
+                    }
+                    
+                    
 
                 }
                 
@@ -242,11 +266,13 @@ service3.on('connection',(socket)=>{
         socket.on('joinRoom', (room) => {
           socket.join(room);
           console.log(`User joined room: ${room}`);
+          socket.on("sendMessage",(needroom,array)=>{
+            socket.to(room).emit('message', "helloaadff");
+
+          })
           socket.to(room).emit('message', `A new user has joined the room: ${room}`);
         });
     })
-
-   
 
 //-------------------------------------------------------------------------
 
