@@ -29,20 +29,24 @@ const userSchema = new mongoose.Schema({
 
 const User=mongoose.model('User',userSchema);
 
+app.get('/api',async(req,res)=>{
+    return res.status(401).json({message:"Invalid user"});
+})
+
 app.post('/login', express.json(), async (req, res) => {
     try {
         const { email,password } = req.body;
         const user=await User.findOne({email});
-        console.log(email,password);
+        // console.log(email,password);
     
         if(user){
-            console.log("user found")
+            // console.log("user found")
             const current_user=user.name
-                console.log(current_user);
+                // console.log(current_user);
                 SocketRef.setcurrentname(current_user);
 
             if (user.password==password){
-                console.log("User authenticated");
+                // console.log("User authenticated");
             
                 const token=jwt.sign({id:user.id,name:user.name,displayname:user.displayname},secretKey,{expiresIn:"700000s"});
                 res.status(200).json({token});
@@ -51,7 +55,7 @@ app.post('/login', express.json(), async (req, res) => {
         }
         
         else{
-            console.log("user not found");
+            // console.log("user not found");
             return res.status(401).json({message:"Invalid user"});
 
 
@@ -66,21 +70,23 @@ app.post('/signup', express.json(), async (req, res) => {
     try {
         const { name,password,email,displayname,date,month,year } = req.body;
         const user=await User.findOne({$or:[{name},{email}]});
-        console.log(date.length);
+        // console.log(date.length);
         if ((date).length==0||(month).length==0||(year).length==0){
             res.status(500).send({ error: 'An error occurred while receiving data' });
         }
         else{
             if(user){
-                console.log(user,"user");
-                console.log('User already exists');
+                // console.log(user,"user");
+                // console.log('User already exists');
                 res.status(500).send({ message:"sucess" })
                 
             }
             else{
                 const newuser=new User({name,password,email,displayname,date,month,year})
                 await newuser.save();
-                console.log('User created');
+                const newuser2=new RequestUser({ofname:name})
+                await newuser2.save()
+                // console.log('User created');
                 res.status(200).send({ message:"done" })
             }
 
@@ -89,7 +95,7 @@ app.post('/signup', express.json(), async (req, res) => {
         
         
     } catch (error) {
-        console.log(error);
+        // console.log(error);
         res.status(500).send({ error: 'An error occurred while receiving data' });
     }
 });
@@ -113,6 +119,7 @@ app.get('/protected', verifyToken, (req, res) => {
       const bearerToken = bearerHeader.split(' ')[1];
       const decoded=jwt.decode(bearerToken,{complete:true});
       const currentuser=decoded.payload.displayname
+
       req.token = bearerToken;
       next();
     } else {
@@ -140,41 +147,26 @@ service1.on('connection',(socket)=>{
     socket.on("savefriends",(currentuser,friendtoadd)=>{
         console.log("save friends request received")
         async function addcheckofname(){
+            console.log("insidefunction")
             const user=await RequestUser.findOne({ofname:friendtoadd})
+      
     
             if (user){
                 console.log("user existsa")
-                if (user.toname.includes(currentuser)===true || friendtoadd===currentuser){
+                console.log(user.toname.includes(currentuser))
+                if (user.toname.includes(currentuser)===true || friendtoadd===currentuser || user.addedfriends.includes(currentuser)==true){
                     console.log("cant override")
                 }
                 else{
                     console.log("updating")
-
-
                       await RequestUser.updateOne({
                     ofname:friendtoadd},
                     {$push:{toname:currentuser}},
                 )
-
-
                 }
               
             }
             else{
-                console.log("willcreate",currentuser)
-                console.log(currentuser,friendtoadd)
-                
-                const newuser=new RequestUser({ofname:friendtoadd,toname:currentuser})
-                const check=await RequestUser.findOne({ofname:currentuser})
-                if (check){
-                    console.log("good to go")
-                }
-                else{
-                    const newuser1=new RequestUser({ofname:currentuser})
-                    await newuser1.save()
-                }
-                await newuser.save();
-
             }
     
         }
@@ -186,17 +178,18 @@ service1.on('connection',(socket)=>{
 const service2=io.of('/service2');
 service2.on('connection',(socket)=>{
     socket.on("requestfriend",(currentuser)=>{
-        console.log(currentuser)
+        // console.log(currentuser)
         async function addcheckofname1(){
             const user=await RequestUser.findOne({ofname:currentuser})
     
             if (user){
-                console.log("userpresent",user.ofname)
+                // console.log("userpresent",user.ofname)
                 socket.emit("requestfri",user.toname,user.addedfriends)
+                // console.log(user.ofname,user.toname,"addedfriends")
             }
             else{
-                console.log(currentuser)
-                console.log("no user")
+                // console.log(currentuser)
+                // console.log("no user")
             }
     
         }
@@ -208,23 +201,25 @@ service2.on('connection',(socket)=>{
 service3.on('connection',(socket)=>{
     socket.on("permaservice",(currentuser,permavalue)=>{
         async function addfri(){
-            console.log(currentuser,permavalue,"permavalue")
+            // console.log(currentuser,permavalue,"permavalue")
             const user=await RequestUser.findOne({ofname:currentuser})
     
             if (user){
                 if (permavalue===""){
-                    console.log("emptysendedvalue")
+                    // console.log("emptysendedvalue")
                     
                 }
                 else{
 
                     const check11=await RequestUser.findOne({ofname:currentuser})
-                    console.log(permavalue,check11.addedfriends,"lastcheckpoint")
+                    // console.log(permavalue,check11.addedfriends,"lastcheckpoint")
 
-                    if (permavalue in check11.addedfriends){
-                        console.log("Multiple hits")
+                    if (check11.addedfriends.includes(permavalue)){
+                        // console.log("Multiple hits")
                     }
                     else{
+
+                        
                         await RequestUser.updateOne(
                             { ofname: currentuser },
                             { $push: { addedfriends: permavalue } }
@@ -239,7 +234,7 @@ service3.on('connection',(socket)=>{
                             { $pull: { toname: permavalue } }
                         );
                         
-                            console.log("addedfriends")
+                            // console.log("addedfriends")
                             
 
                     }
@@ -252,8 +247,8 @@ service3.on('connection',(socket)=>{
                 
             }
             else{
-                console.log(currentuser)
-                console.log("no perma user")
+                // console.log(currentuser)
+                // console.log("no perma user")
             }
     
         }
@@ -261,18 +256,24 @@ service3.on('connection',(socket)=>{
 
     })
 
-    const service4=io.of('/service4');
-    service4.on('connection', (socket) => {
-        socket.on('joinRoom', (room) => {
-          socket.join(room);
-          console.log(`User joined room: ${room}`);
-          socket.on("sendMessage",(needroom,array)=>{
-            socket.to(room).emit('message', "helloaadff");
+    const service4 = io.of('/service4');
+service4.on('connection', (socket) => {
+  console.log('A user connected to service4');
+  
+  socket.on('joinRoom', (room) => {
+    socket.join(room);
+    console.log(`User joined room: ${room}`);
 
-          })
-          socket.to(room).emit('message', `A new user has joined the room: ${room}`);
-        });
-    })
+    socket.on("sendMessage", (mssg) => {
+      console.log(`Message received: ${mssg}`);
+      socket.to(room).emit('message', mssg);
+    });
+  });
+
+//   socket.on('disconnect', () => {
+//     console.log('A user disconnected from service4');
+//   });
+});
 
 //-------------------------------------------------------------------------
 
