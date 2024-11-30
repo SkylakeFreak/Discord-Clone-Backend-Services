@@ -256,24 +256,7 @@ service3.on('connection',(socket)=>{
 
     })
 
-    const service4 = io.of('/service4');
-service4.on('connection', (socket) => {
-  console.log('A user connected to service4');
-  
-  socket.on('joinRoom', (room) => {
-    socket.join(room);
-    console.log(`User joined room: ${room}`);
 
-    socket.on("sendMessage", (mssg) => {
-      console.log(`Message received: ${mssg}`);
-      socket.to(room).emit('message', mssg);
-    });
-  });
-
-//   socket.on('disconnect', () => {
-//     console.log('A user disconnected from service4');
-//   });
-});
 
 //-------------------------------------------------------------------------
 
